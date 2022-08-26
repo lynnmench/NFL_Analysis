@@ -53,7 +53,7 @@ df_sche.dropna(axis=0, inplace = True)
 #combining date and time to one column
 #Then sorting data frame by date and time
 df_sche['DateTime'] = pd.to_datetime(df_sche['Date'] + ' ' + df_sche['Time'], format='%m/%d/%y %I:%M%p')
-df_sche['Season'] = pd.DatetimeIndex(df_sche['DateTime']).year
+#df_sche['Season'] = pd.DatetimeIndex(df_sche['DateTime']).year
 df_sche = df_sche.sort_values(by='DateTime',ascending=False)
 
 
@@ -248,18 +248,19 @@ for i in df_offense.index:
     season = df_offense.loc[i, 'Season'] - 1
     team = df_offense.loc[i, 'TeamName']
     if season < 2012:
-        df_offense.loc[i, 'Def_Pre_RK'] = np.nan
+        df_offense.loc[i, 'Off_Pre_RK'] = np.nan
         #continue
     else:
         off_list = df_offense.loc[df_offense['Season']==season]
         if team in off_list['TeamName'].values:
-            df_offense.loc[i, 'Def_Pre_RK'] = off_list['Rank'][off_list['TeamName']==team].values[0]
+            df_offense.loc[i, 'Off_Pre_RK'] = off_list['Rank'][off_list['TeamName']==team].values[0]
         else:
-            df_offense.loc[i, 'Def_Pre_RK'] = np.nan  
+            df_offense.loc[i, 'Off_Pre_RK'] = np.nan  
 
 
 #romving the Superbowl game from the data frame to make it easier to sort the away and home teams
-#df_sche.drop(df_sche[df_sche['Week'] =='SuperBowl'].index, inplace = True)
+#With more time figure out a way to include superbowl stats
+df_sche.drop(df_sche[df_sche['Week'] =='SuperBowl'].index, inplace = True)
 
 #Labeling all Tied games
 df_sche['Win_Loc'] = df_sche.apply(lambda x: 'T' if x['Pts']==x['Pts.1'] else x['Win_Loc'], axis=1)
@@ -291,26 +292,93 @@ df_sche.loc[(df_sche['WinTeam'] == 'Vikings') & (df_sche['LoseTeam'] == 'Packers
         (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2013), ['HomeTeam','AwayTeam']] = ['Packers','Vikings']
 df_sche.loc[(df_sche['WinTeam'] == '49ers') & (df_sche['LoseTeam'] == 'Rams') & 
         (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Rams','49ers']
+#2016 Washington Football Team vs Bengals Tie -> location London
+df_sche.drop(df_sche.loc[(df_sche['WinTeam'] == 'WashFB') & (df_sche['LoseTeam'] == 'Bengals') & 
+                         (df_sche['Win_Loc'] == 'T')].index, inplace=True)
 #With more time I would figure out what games were played not at a teams true home field (example London).
 #With these games I would remove the information from the home and away team and replace with null.
 
 
+#Problems with combining dataframes
+#The season year was not all in the same data type
+#There is not a QB rank for all teams all years, this leaves some nans in the rank dataframe
+#Another common problem is spaces in the string columns, these dataframes did not have this problem
+#troubleshooting merge -> indicator=True
+#print(df_stadium['TeamName'].isin(df_sche['HomeTeam']))
+df_qb['Season'] = df_qb['Season'].astype('int64')
+df_sche['Season'] = df_sche['Season'].astype('int64')
 
 #Combining all data frames to one data frame.
-#df_sche: HomeTeam: QB Rank, Offense Rank, Defense Rank, Stadium
-#           AwayTeam: QBRank, Offense Rank, Defense Rank
+#Combine all ranks: QB, Offense, Defense
+#df_sche: HomeTeam: all ranks, stadium
+#         AwayTeam: all ranks, stadium (division and conference)
 
+#Combine ranks: Quarterback, Offense, Defense
+#Combining Offense and Defense
+df_rank = pd.merge(df_offense,df_defense, how='left',left_on=['Season', 'TeamName'],
+                   right_on=['Season', 'TeamName'],suffixes=('_Off', '_Def'))
+#Adding Quarterback rank
+df_rank = pd.merge(df_rank,df_qb, how='left',left_on=['Season', 'TeamName'],
+                   right_on=['Season', 'TeamName'],suffixes=('', '_QB'))
 
-test_df = pd.merge(df_sche,df_stadium, how='left',left_on=['HomeTeam'],
+#Home stadium
+df_nfl = pd.merge(df_sche,df_stadium, how='left',left_on=['HomeTeam'],
                    right_on=['TeamName'],suffixes=('_Sche', '_Stadium'))
+#Renameing stadium columns
+df_nfl = df_nfl.drop('TeamName', axis=1)
+df_nfl = df_nfl.rename({'Division': 'Div_Home', 'Conference':'Conf_Home'}, axis=1)
+#Home Ranks
+#print(df_nfl['Season'].isin(df_rank['Season']))
+df_nfl = pd.merge(df_nfl,df_rank, how='left',left_on=['Season', 'HomeTeam'],
+                   right_on=['Season', 'TeamName'],suffixes=('_NFL', '_Home'))
+
+df_nfl = df_nfl.drop('TeamName', axis=1)
+
+rank_rename = ['Rank_Off', 'Team_Off',
+'Yards/G_Off', 'Rush/G_Off', 'Rush/P_Off', 'Pass/G_Off', 'QBR_Off',
+'Sacks_Off', '3rd%_Off', 'Poss/G_Off', 'Pts/G_Off', 'Off_Pre_RK',
+'Rank_Def', 'Team_Def', 'Yards/G_Def', 'Rush/G_Def', 'Rush/P_Def',
+'Pass/G_Def', 'QBR_Def', 'Sacks_Def', '3rd%_Def', 'Poss/G_Def',
+'Pts/G_Def', 'Def_Pre_RK', 'RK', 'NAME', 'QBR', 'PAA', 'Plays', 'EPA',
+'PASS', 'RUN', 'SACK', 'PEN', 'RAW', 'QBTeam','QB_Pre_RK']
+
+for name in rank_rename:
+    df_nfl = df_nfl.rename({name: name+'_Home'},axis=1)
+
+#Away Stadium
+df_nfl = pd.merge(df_nfl,df_stadium[['TeamName','Division','Conference']], how='left',left_on=['AwayTeam'],
+                   right_on=['TeamName'],suffixes=('_Sche', '_Stadium'))
+#Renameing stadium columns
+df_nfl = df_nfl.drop('TeamName', axis=1)
+df_nfl = df_nfl.rename({'Division': 'Div_Away', 'Conference':'Conf_Away'}, axis=1)
+#Away Ranks
+df_nfl = pd.merge(df_nfl,df_rank, how='left',left_on=['Season', 'HomeTeam'],
+                   right_on=['Season', 'TeamName'],suffixes=('_NFL', '_Away'))
+#Renameing stadium columns
+#df_nfl = df_nfl.rename({'Division': 'Div_Home', 'Conference':'Conf_Home'}, axis=1)
+df_nfl = df_nfl.drop('TeamName', axis=1)
+
+for name in rank_rename:
+    df_nfl = df_nfl.rename({name: name+'_Away'},axis=1)
+
+
+#Drop duplicate or unwanted columns
 
 
 
 
 
 
+print(df_nfl.columns)
 
 
+df_offense = df_offense.rename({'#': 'Rank'}, axis=1)
 
+#df_qb[['Season','TeamName','NAME']]
 
+#new_df = pd.merge(A_df, B_df,  how='left', left_on=['A_c1','c2'], right_on = ['B_c1','c2'])
 #df.rename(columns={'oldName1': 'newName1', 'oldName2': 'newName2'}, inplace=True)
+
+
+
+
