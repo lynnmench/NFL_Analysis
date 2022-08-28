@@ -127,11 +127,11 @@ df_defense['Team'] = df_defense['Team'].str.replace('St. Louis','L.A. Rams')
 df_defense['Team'] = df_defense['Team'].str.replace('Los Angeles','L.A. Rams')
 
 #creating a table of the different way team names are marked for each data frame
-qb_teams = df_qb.QBTeam.unique()
-offense_teams = df_offense.Team.unique()
-defense_teams = df_defense.Team.unique()
-stadium_teams = df_stadium['Team(s)'].unique()
-sche_teams = df_sche['Winner/tie'].unique()
+#qb_teams = df_qb.QBTeam.unique()
+#offense_teams = df_offense.Team.unique()
+#defense_teams = df_defense.Team.unique()
+#stadium_teams = df_stadium['Team(s)'].unique()
+#sche_teams = df_sche['Winner/tie'].unique()
 
 #Improvement to code would be to make this step automated
 team_data = [{'Mascot': 'Steeler', 'Initial': 'PIT', 'City': 'Pittsburgh', 'Name':'Pittsburgh Steelers'},
@@ -215,7 +215,7 @@ df_qb['QB_Pre_RK'] = np.nan
 for i in df_qb.index:
     season = df_qb.loc[i, 'Season'] - 1
     qb = df_qb.loc[i, 'Name']
-    if season < 2012:
+    if season < 2006:
         df_qb.loc[i, 'QB_Pre_RK'] = np.nan
         #continue
     else:
@@ -225,13 +225,26 @@ for i in df_qb.index:
         else:
             df_qb.loc[i, 'QB_Pre_RK'] = np.nan
 
+
+
+#Finding duplicate quarter backs for a team in one season
+#Keeping the name and stats of the higher ranked quarterback
+#adding the number of plays from both quarterbacks together
+df = df_qb[['Season', 'TeamName']][df_qb[['Season', 'TeamName']].duplicated(keep=False)]
+qb_extra = df.groupby(list(df)).apply(lambda x: tuple(x.index)).tolist()
+
+for qb1, qb2 in qb_extra:
+    df_qb.loc[qb1, 'Plays'] = df_qb.loc[qb1, 'Plays'] + df_qb.loc[qb2, 'Plays']
+    df_qb = df_qb.drop(qb2, axis=0)
+    
+
 #Defense dataframe
 df_defense['Def_Pre_RK'] = np.nan
 #for each row in the dataframe 
 for i in df_defense.index:
     season = df_defense.loc[i, 'Season'] - 1
     team = df_defense.loc[i, 'TeamName']
-    if season < 2012:
+    if season < 2006:
         df_defense.loc[i, 'Def_Pre_RK'] = np.nan
         #continue
     else:
@@ -247,7 +260,7 @@ df_offense['Off_Pre_RK'] = np.nan
 for i in df_offense.index:
     season = df_offense.loc[i, 'Season'] - 1
     team = df_offense.loc[i, 'TeamName']
-    if season < 2012:
+    if season < 2006:
         df_offense.loc[i, 'Off_Pre_RK'] = np.nan
         #continue
     else:
@@ -269,29 +282,66 @@ df_sche['Win_Loc'] = df_sche.apply(lambda x: 'T' if x['Pts']==x['Pts.1'] else x[
 df_sche['HomeTeam'] = df_sche.apply(lambda x: x['WinTeam'] if x['Win_Loc']=='H' 
                                     else x['LoseTeam'] if x['Win_Loc']=='A'
                                     else np.nan, axis=1)
+df_sche['HomePts'] = df_sche.apply(lambda x: x['Pts'] if x['Win_Loc']=='H' 
+                                    else x['Pts.1'] if x['Win_Loc']=='A'
+                                    else x['Pts'], axis=1)
+df_sche['HomeYds'] = df_sche.apply(lambda x: x['YdsW'] if x['Win_Loc']=='H' 
+                                    else x['YdsL'] if x['Win_Loc']=='A'
+                                    else np.nan, axis=1)
+df_sche['HomeTO'] = df_sche.apply(lambda x: x['TOW'] if x['Win_Loc']=='H' 
+                                    else x['TOL'] if x['Win_Loc']=='A'
+                                    else np.nan, axis=1)
 df_sche['AwayTeam'] = df_sche.apply(lambda x: x['WinTeam'] if x['Win_Loc']=='A' 
                                     else x['LoseTeam'] if x['Win_Loc']=='H'
                                     else np.nan, axis=1)
+df_sche['AwayPts'] = df_sche.apply(lambda x: x['Pts'] if x['Win_Loc']=='A' 
+                                    else x['Pts.1'] if x['Win_Loc']=='H'
+                                    else x['Pts.1'], axis=1)
+df_sche['AwayYds'] = df_sche.apply(lambda x: x['YdsW'] if x['Win_Loc']=='A' 
+                                    else x['YdsL'] if x['Win_Loc']=='H'
+                                    else np.nan, axis=1)
+df_sche['AwayTO'] = df_sche.apply(lambda x: x['TOW'] if x['Win_Loc']=='A' 
+                                    else x['TOL'] if x['Win_Loc']=='H'
+                                    else np.nan, axis=1)
 
-#Manually assigning each Tie game home and away
-df_sche.loc[(df_sche['WinTeam'] == 'Steeler') & (df_sche['LoseTeam'] == 'Lions') & 
-        (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Steeler','Lions']
+
+#Manually assigning each Tie game home and away stats
+#Given more time I would improve this and make it automated, leaving less room for error
+index_lst = df_sche.loc[(df_sche['WinTeam'] == 'Steeler') & (df_sche['LoseTeam'] == 'Lions') & 
+        (df_sche['Win_Loc'] == 'T')].index.tolist()
+df_sche.loc[index_lst[0], 'HomeTeam'] = 'Steeler'
+df_sche.loc[index_lst[0], 'HomeYds'] = df_sche.loc[index_lst[0], 'YdsW']
+df_sche.loc[index_lst[0], 'HomeTO'] = df_sche.loc[index_lst[0], 'TOW']
+df_sche.loc[index_lst[0], 'AwayTeam'] = 'Lions'
+df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsL']
+df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOL']
+
 df_sche.loc[(df_sche['WinTeam'] == 'Eagles') & (df_sche['LoseTeam'] == 'Bengals') & 
-        (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Bengals','Eagles']
+        (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2020), ['HomeTeam','AwayTeam']] = ['Bengals','Eagles']
+
 df_sche.loc[(df_sche['WinTeam'] == 'Lions') & (df_sche['LoseTeam'] == 'Cardinals') & 
         (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Lions','Cardinals']
+
 df_sche.loc[(df_sche['WinTeam'] == 'Vikings') & (df_sche['LoseTeam'] == 'Packers') & 
         (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2018), ['HomeTeam','AwayTeam']] = ['Packers','Vikings']
+
 df_sche.loc[(df_sche['WinTeam'] == 'Steeler') & (df_sche['LoseTeam'] == 'Browns') & 
         (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Browns','Steeler']
+
 df_sche.loc[(df_sche['WinTeam'] == 'Seahawks') & (df_sche['LoseTeam'] == 'Cardinals') & 
         (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Cardinals','Seahawks']
+
 df_sche.loc[(df_sche['WinTeam'] == 'Bengals') & (df_sche['LoseTeam'] == 'Panthers') & 
         (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Bengals','Panthers']
+
 df_sche.loc[(df_sche['WinTeam'] == 'Vikings') & (df_sche['LoseTeam'] == 'Packers') & 
         (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2013), ['HomeTeam','AwayTeam']] = ['Packers','Vikings']
+
 df_sche.loc[(df_sche['WinTeam'] == '49ers') & (df_sche['LoseTeam'] == 'Rams') & 
         (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Rams','49ers']
+
+df_sche.loc[(df_sche['WinTeam'] == 'Eagles') & (df_sche['LoseTeam'] == 'Bengals') & 
+        (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2008), ['HomeTeam','AwayTeam']] = ['Bengals','Eagles']
 #2016 Washington Football Team vs Bengals Tie -> location London
 df_sche.drop(df_sche.loc[(df_sche['WinTeam'] == 'WashFB') & (df_sche['LoseTeam'] == 'Bengals') & 
                          (df_sche['Win_Loc'] == 'T')].index, inplace=True)
@@ -362,23 +412,64 @@ for name in rank_rename:
     df_nfl = df_nfl.rename({name: name+'_Away'},axis=1)
 
 
-#Drop duplicate or unwanted columns
+#Adding column for conference game information
+#This game is a division game
+df_nfl['div_game'] = df_nfl.apply(lambda x: 1 if x['Div_Home']==x['Div_Away'] else 0, axis=1)
+#This game is not a conference game
+df_nfl['out_conf'] = df_nfl.apply(lambda x: 0 if x['Conf_Home']==x['Conf_Away'] else 1, axis=1)
 
+#Adding the amount of time each team had between games
 
-
-
-
-
+#for each row in the dataframe
+#I can go down each row becuase the games have been sorted by date
+df_nfl['Rest_Away'] = np.nan
+df_nfl['Rest_Home'] = np.nan
+#df_nfl['last_game_div_H'] = np.nan
+#df_nfl['last_game_div_A'] = np.nan
+#df_nfl['next_game_div_H'] = np.nan
+#df_nfl['next_game_div_A'] = np.nan
+#df_nfl['next_game_bye_H'] = np.nan
+#df_nfl['next_game_bye_A'] = np.nan
+team_list = df_teams['Mascot'].unique().tolist()
+games = []
+team_loc = []
+for team in team_list:
+    #print(team)
+    games.clear()
+    x = 0
+    team_loc.clear()
+    #(df_nfl.shape[0] - 1)
+    while x <= (df_nfl.shape[0] - 1):
+        #print(x)
+        if team == df_nfl.loc[x, 'HomeTeam']:
+            #print('home')
+            games.append(x)
+            team_loc.append('H')
+        if team == df_nfl.loc[x, 'AwayTeam']:
+            #print('away')
+            games.append(x)
+            team_loc.append('A')    
+        x += 1
+    i_now = games[0]
+    games.pop(0)
+    team_loc.pop(-1)
+    #print(games, team_loc)
+    #Adding the time the teams were able to rest
+    for i, loc in zip(games, team_loc):
+        #print(i_now, loc)
+        if loc == 'H':
+            #print(df_nfl.loc[i_now, 'DateTime'] - df_nfl.loc[i, 'DateTime'])
+            df_nfl.loc[i_now, 'Rest_Home'] = df_nfl.loc[i_now, 'DateTime'] - df_nfl.loc[i, 'DateTime']
+            #df_nfl.loc[i_now, 'last_game_div_H'] = df_nfl.loc[i, 'Div_Home']
+        if loc == 'A':
+            #print(df_nfl.loc[i_now, 'DateTime'] - df_nfl.loc[i, 'DateTime'])
+            df_nfl.loc[i_now, 'Rest_Away'] = df_nfl.loc[i_now, 'DateTime'] - df_nfl.loc[i, 'DateTime']
+            #df_nfl.loc[i_now, 'last_game_div_A'] = df_nfl.loc[i, 'Div_Away']
+        i_now = i
+    
+#drop extra team name columns
 print(df_nfl.columns)
-
-
-df_offense = df_offense.rename({'#': 'Rank'}, axis=1)
-
-#df_qb[['Season','TeamName','NAME']]
-
-#new_df = pd.merge(A_df, B_df,  how='left', left_on=['A_c1','c2'], right_on = ['B_c1','c2'])
-#df.rename(columns={'oldName1': 'newName1', 'oldName2': 'newName2'}, inplace=True)
-
-
+drop_col = ['Day', 'Date', 'Time', 'Winner/tie', 'Win_Loc','Loser/tie', 'Pts', 'Pts.1',]
+df_nfl = df_nfl.drop('TeamName', axis=1)
 
 
