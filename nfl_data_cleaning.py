@@ -3,7 +3,7 @@
 """
 Created on Fri 19Aug2022
 
-@author: lynnpowell
+@author: Lynn Menchaca
 """
 
 """
@@ -25,6 +25,8 @@ how to merge multiple files:
 https://www.geeksforgeeks.org/how-to-merge-multiple-csv-files-into-a-single-pandas-dataframe/   
 
 Quarterback = QB
+Offense = Off
+Defense = Def
 
 
 """
@@ -95,7 +97,7 @@ df_offense = df_offense.rename({'#': 'Rank'}, axis=1)
 #Team name column for the QB data frame
 pattern = r'\w([A-Z]+$)'
 df_qb['QBTeam'] = df_qb['NAME'].str.extract(pattern, expand=False)
-df_qb['Name'] = df_qb.apply(lambda x: x['NAME'].replace(str(x['QBTeam']), ''), axis=1)
+df_qb['QBName'] = df_qb.apply(lambda x: x['NAME'].replace(str(x['QBTeam']), ''), axis=1)
 
 #Update teams to match the names in current season
 #STL = LAR, OAK = LV, IIWSH = WSH, SD = LAC, AK = LV
@@ -214,14 +216,14 @@ df_qb['QB_Pre_RK'] = np.nan
 #for each row in the dataframe 
 for i in df_qb.index:
     season = df_qb.loc[i, 'Season'] - 1
-    qb = df_qb.loc[i, 'Name']
+    qb = df_qb.loc[i, 'QBName']
     if season < 2006:
         df_qb.loc[i, 'QB_Pre_RK'] = np.nan
         #continue
     else:
         qb_list = df_qb.loc[df_qb['Season']==season]
-        if qb in qb_list['Name'].values:
-            df_qb.loc[i, 'QB_Pre_RK'] = qb_list['RK'][qb_list['Name']==qb].values[0]
+        if qb in qb_list['QBName'].values:
+            df_qb.loc[i, 'QB_Pre_RK'] = qb_list['RK'][qb_list['QBName']==qb].values[0]
         else:
             df_qb.loc[i, 'QB_Pre_RK'] = np.nan
 
@@ -316,32 +318,87 @@ df_sche.loc[index_lst[0], 'AwayTeam'] = 'Lions'
 df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsL']
 df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOL']
 
-df_sche.loc[(df_sche['WinTeam'] == 'Eagles') & (df_sche['LoseTeam'] == 'Bengals') & 
-        (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2020), ['HomeTeam','AwayTeam']] = ['Bengals','Eagles']
+index_lst = df_sche.loc[(df_sche['WinTeam'] == 'Eagles') & (df_sche['LoseTeam'] == 'Bengals') & 
+        (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2020)].index.tolist()
+df_sche.loc[index_lst[0], 'HomeTeam'] = 'Bengals'
+df_sche.loc[index_lst[0], 'HomeYds'] = df_sche.loc[index_lst[0], 'YdsL']
+df_sche.loc[index_lst[0], 'HomeTO'] = df_sche.loc[index_lst[0], 'TOL']
+df_sche.loc[index_lst[0], 'AwayTeam'] = 'Eagles'
+df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsW']
+df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOW']
 
-df_sche.loc[(df_sche['WinTeam'] == 'Lions') & (df_sche['LoseTeam'] == 'Cardinals') & 
-        (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Lions','Cardinals']
+index_lst = df_sche.loc[(df_sche['WinTeam'] == 'Lions') & (df_sche['LoseTeam'] == 'Cardinals') & 
+        (df_sche['Win_Loc'] == 'T')].index.tolist()
+df_sche.loc[index_lst[0], 'HomeTeam'] = 'Lions'
+df_sche.loc[index_lst[0], 'HomeYds'] = df_sche.loc[index_lst[0], 'YdsW']
+df_sche.loc[index_lst[0], 'HomeTO'] = df_sche.loc[index_lst[0], 'TOW']
+df_sche.loc[index_lst[0], 'AwayTeam'] = 'Cardinals'
+df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsL']
+df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOL']
 
-df_sche.loc[(df_sche['WinTeam'] == 'Vikings') & (df_sche['LoseTeam'] == 'Packers') & 
-        (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2018), ['HomeTeam','AwayTeam']] = ['Packers','Vikings']
+index_lst = df_sche.loc[(df_sche['WinTeam'] == 'Vikings') & (df_sche['LoseTeam'] == 'Packers') & 
+        (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2018)].index.tolist()
+df_sche.loc[index_lst[0], 'HomeTeam'] = 'Packers'
+df_sche.loc[index_lst[0], 'HomeYds'] = df_sche.loc[index_lst[0], 'YdsL']
+df_sche.loc[index_lst[0], 'HomeTO'] = df_sche.loc[index_lst[0], 'TOL']
+df_sche.loc[index_lst[0], 'AwayTeam'] = 'Vikings'
+df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsW']
+df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOW']
 
-df_sche.loc[(df_sche['WinTeam'] == 'Steeler') & (df_sche['LoseTeam'] == 'Browns') & 
-        (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Browns','Steeler']
+index_lst = df_sche.loc[(df_sche['WinTeam'] == 'Steeler') & (df_sche['LoseTeam'] == 'Browns') & 
+        (df_sche['Win_Loc'] == 'T')].index.tolist()
+df_sche.loc[index_lst[0], 'HomeTeam'] = 'Browns'
+df_sche.loc[index_lst[0], 'HomeYds'] = df_sche.loc[index_lst[0], 'YdsL']
+df_sche.loc[index_lst[0], 'HomeTO'] = df_sche.loc[index_lst[0], 'TOL']
+df_sche.loc[index_lst[0], 'AwayTeam'] = 'Steeler'
+df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsW']
+df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOW']
 
-df_sche.loc[(df_sche['WinTeam'] == 'Seahawks') & (df_sche['LoseTeam'] == 'Cardinals') & 
-        (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Cardinals','Seahawks']
+index_lst = df_sche.loc[(df_sche['WinTeam'] == 'Seahawks') & (df_sche['LoseTeam'] == 'Cardinals') & 
+        (df_sche['Win_Loc'] == 'T')].index.tolist()
+df_sche.loc[index_lst[0], 'HomeTeam'] = 'Cardinals'
+df_sche.loc[index_lst[0], 'HomeYds'] = df_sche.loc[index_lst[0], 'YdsL']
+df_sche.loc[index_lst[0], 'HomeTO'] = df_sche.loc[index_lst[0], 'TOL']
+df_sche.loc[index_lst[0], 'AwayTeam'] = 'Seahawks'
+df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsW']
+df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOW']
 
-df_sche.loc[(df_sche['WinTeam'] == 'Bengals') & (df_sche['LoseTeam'] == 'Panthers') & 
-        (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Bengals','Panthers']
+index_lst = df_sche.loc[(df_sche['WinTeam'] == 'Bengals') & (df_sche['LoseTeam'] == 'Panthers') & 
+        (df_sche['Win_Loc'] == 'T')].index.tolist()
+df_sche.loc[index_lst[0], 'HomeTeam'] = 'Bengals'
+df_sche.loc[index_lst[0], 'HomeYds'] = df_sche.loc[index_lst[0], 'YdsW']
+df_sche.loc[index_lst[0], 'HomeTO'] = df_sche.loc[index_lst[0], 'TOW']
+df_sche.loc[index_lst[0], 'AwayTeam'] = 'Panthers'
+df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsL']
+df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOL']
 
-df_sche.loc[(df_sche['WinTeam'] == 'Vikings') & (df_sche['LoseTeam'] == 'Packers') & 
-        (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2013), ['HomeTeam','AwayTeam']] = ['Packers','Vikings']
+index_lst = df_sche.loc[(df_sche['WinTeam'] == 'Vikings') & (df_sche['LoseTeam'] == 'Packers') & 
+        (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2013)].index.tolist()
+df_sche.loc[index_lst[0], 'HomeTeam'] = 'Packers'
+df_sche.loc[index_lst[0], 'HomeYds'] = df_sche.loc[index_lst[0], 'YdsL']
+df_sche.loc[index_lst[0], 'HomeTO'] = df_sche.loc[index_lst[0], 'TOL']
+df_sche.loc[index_lst[0], 'AwayTeam'] = 'Vikings'
+df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsW']
+df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOW']
 
-df_sche.loc[(df_sche['WinTeam'] == '49ers') & (df_sche['LoseTeam'] == 'Rams') & 
-        (df_sche['Win_Loc'] == 'T'), ['HomeTeam','AwayTeam']] = ['Rams','49ers']
+index_lst = df_sche.loc[(df_sche['WinTeam'] == '49ers') & (df_sche['LoseTeam'] == 'Rams') & 
+        (df_sche['Win_Loc'] == 'T')].index.tolist()
+df_sche.loc[index_lst[0], 'HomeTeam'] = 'Rams'
+df_sche.loc[index_lst[0], 'HomeYds'] = df_sche.loc[index_lst[0], 'YdsL']
+df_sche.loc[index_lst[0], 'HomeTO'] = df_sche.loc[index_lst[0], 'TOL']
+df_sche.loc[index_lst[0], 'AwayTeam'] = '49ers'
+df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsW']
+df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOW']
 
-df_sche.loc[(df_sche['WinTeam'] == 'Eagles') & (df_sche['LoseTeam'] == 'Bengals') & 
-        (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2008), ['HomeTeam','AwayTeam']] = ['Bengals','Eagles']
+index_lst = df_sche.loc[(df_sche['WinTeam'] == 'Eagles') & (df_sche['LoseTeam'] == 'Bengals') & 
+        (df_sche['Win_Loc'] == 'T') & (df_sche['Season'] == 2008)].index.tolist()
+df_sche.loc[index_lst[0], 'HomeTeam'] = 'Bengals'
+df_sche.loc[index_lst[0], 'HomeYds'] = df_sche.loc[index_lst[0], 'YdsL']
+df_sche.loc[index_lst[0], 'HomeTO'] = df_sche.loc[index_lst[0], 'TOL']
+df_sche.loc[index_lst[0], 'AwayTeam'] = 'Eagles'
+df_sche.loc[index_lst[0], 'AwayYds'] = df_sche.loc[index_lst[0], 'YdsW']
+df_sche.loc[index_lst[0], 'AwayTO'] = df_sche.loc[index_lst[0], 'TOW']
+
 #2016 Washington Football Team vs Bengals Tie -> location London
 df_sche.drop(df_sche.loc[(df_sche['WinTeam'] == 'WashFB') & (df_sche['LoseTeam'] == 'Bengals') & 
                          (df_sche['Win_Loc'] == 'T')].index, inplace=True)
@@ -389,7 +446,7 @@ rank_rename = ['Rank_Off', 'Team_Off',
 'Sacks_Off', '3rd%_Off', 'Poss/G_Off', 'Pts/G_Off', 'Off_Pre_RK',
 'Rank_Def', 'Team_Def', 'Yards/G_Def', 'Rush/G_Def', 'Rush/P_Def',
 'Pass/G_Def', 'QBR_Def', 'Sacks_Def', '3rd%_Def', 'Poss/G_Def',
-'Pts/G_Def', 'Def_Pre_RK', 'RK', 'NAME', 'QBR', 'PAA', 'Plays', 'EPA',
+'Pts/G_Def', 'Def_Pre_RK', 'RK', 'QBName', 'QBR', 'PAA', 'Plays', 'EPA',
 'PASS', 'RUN', 'SACK', 'PEN', 'RAW', 'QBTeam','QB_Pre_RK']
 
 for name in rank_rename:
@@ -404,8 +461,7 @@ df_nfl = df_nfl.rename({'Division': 'Div_Away', 'Conference':'Conf_Away'}, axis=
 #Away Ranks
 df_nfl = pd.merge(df_nfl,df_rank, how='left',left_on=['Season', 'HomeTeam'],
                    right_on=['Season', 'TeamName'],suffixes=('_NFL', '_Away'))
-#Renameing stadium columns
-#df_nfl = df_nfl.rename({'Division': 'Div_Home', 'Conference':'Conf_Home'}, axis=1)
+
 df_nfl = df_nfl.drop('TeamName', axis=1)
 
 for name in rank_rename:
@@ -414,6 +470,9 @@ for name in rank_rename:
 
 #Adding column for conference game information
 #This game is a division game
+#df_nfl['div_game'] = 0
+#condition = df_nfl['Div_Home']==df_nfl['Div_Away']
+#df_nfl[condition]['div_game'] = 1
 df_nfl['div_game'] = df_nfl.apply(lambda x: 1 if x['Div_Home']==x['Div_Away'] else 0, axis=1)
 #This game is not a conference game
 df_nfl['out_conf'] = df_nfl.apply(lambda x: 0 if x['Conf_Home']==x['Conf_Away'] else 1, axis=1)
@@ -468,8 +527,19 @@ for team in team_list:
         i_now = i
     
 #drop extra team name columns
-print(df_nfl.columns)
-drop_col = ['Day', 'Date', 'Time', 'Winner/tie', 'Win_Loc','Loser/tie', 'Pts', 'Pts.1',]
-df_nfl = df_nfl.drop('TeamName', axis=1)
+#print(df_nfl.columns)
+drop_col = ['Day', 'Date', 'Time', 'Winner/tie', 'Win_Loc','Loser/tie', 'LoseTeam', 'Pts', 'Pts.1', 
+            'YdsW', 'TOW', 'YdsL', 'TOL', 'Name', 'Team(s)', 'Team_Off_Home', 'Team_Def_Home',
+            'NAME_NFL', 'QBTeam_Home', 'Team_Off_Away', 'Team_Def_Away','NAME_Away', 'QBTeam_Away']
+df_nfl = df_nfl.drop(drop_col, axis=1)
 
+#print(df_nfl.columns)
 
+#Changing the winning team to a 1 (hometeam) or 0 (away team), if tie null
+df_nfl['H_WinTeam'] = df_nfl.apply(lambda x: 1 if x['WinTeam'] == x['HomeTeam'] else 0, axis=1)
+df_nfl['WinTeam'] = df_nfl.apply(lambda x: np.nan if x['HomePts']==x['AwayPts'] else x['H_WinTeam'], axis=1)
+df_nfl = df_nfl.drop('H_WinTeam',axis=1)
+df_nfl = df_nfl.rename({'WinTeam':'H_WinTeam'},axis=1)
+
+#Save cleaned and full NFL data file
+#df_nfl.to_csv(data_file_path+'nfl_cleaned_data.csv', index = False)
