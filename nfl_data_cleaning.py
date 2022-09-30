@@ -459,7 +459,7 @@ df_nfl = pd.merge(df_nfl,df_stadium[['TeamName','Division','Conference']], how='
 df_nfl = df_nfl.drop('TeamName', axis=1)
 df_nfl = df_nfl.rename({'Division': 'Div_Away', 'Conference':'Conf_Away'}, axis=1)
 #Away Ranks
-df_nfl = pd.merge(df_nfl,df_rank, how='left',left_on=['Season', 'HomeTeam'],
+df_nfl = pd.merge(df_nfl,df_rank, how='left',left_on=['Season', 'AwayTeam'],
                    right_on=['Season', 'TeamName'],suffixes=('_NFL', '_Away'))
 
 df_nfl = df_nfl.drop('TeamName', axis=1)
@@ -525,7 +525,16 @@ for team in team_list:
             df_nfl.loc[i_now, 'Rest_Away'] = df_nfl.loc[i_now, 'DateTime'] - df_nfl.loc[i, 'DateTime']
             #df_nfl.loc[i_now, 'last_game_div_A'] = df_nfl.loc[i, 'Div_Away']
         i_now = i
-    
+
+#rest time delta (winner - loser)
+
+#df_nfl['win_rest_delta'] = df_nfl.apply(lambda x: 0 if x['Win_Loc']=='A' else 1 , axis=1)
+
+df_nfl['win_rest_delta'] = df_nfl.apply(lambda x: x['Rest_Away'] - x['Rest_Home'] if x['Win_Loc']=='A' 
+                                        else x['Rest_Home'] - x['Rest_Away'], axis=1)
+
+#df_nfl['win_rest_delta_days'] = pd.DatetimeIndex(df_nfl['win_rest_delta']).day
+ 
 #drop extra team name columns
 #print(df_nfl.columns)
 drop_col = ['Day', 'Date', 'Time', 'Winner/tie', 'Win_Loc','Loser/tie', 'LoseTeam', 'Pts', 'Pts.1', 
