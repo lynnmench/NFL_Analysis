@@ -22,11 +22,23 @@ Resources:
 youtube -> Krish Naik -> Live-Features Selection-Various Techniques To Select Features Day7
 https://www.youtube.com/watch?v=k-EpAMjw6AE
 
+youtube -> Krish Naik -> Live Machine Learning playlist
+https://www.youtube.com/playlist?list=PLZoTAELRMXVPjaAzURB77Kz0YXxj65tYz
 
 Quarterback = QB
 Offense = Off
 Defense = Def
 
+
+#Clean data
+# weighted mean of all ranks
+# add dummy values
+# feature selection for stadium
+# feature selection for offense stats
+#   make all stats the same scale?
+# feature selection for defense stats
+# feature selection for quarterback stats
+# build models
 
 """
 
@@ -34,12 +46,22 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+#%matplotlib inline
 import time
 
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
+from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.feature_selection import mutual_info_classif
+
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import cross_val_score
+from sklearn.linear_model import Ridge, Lasso
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
+from sklearn.linear_model import LogisticRegression
 
 
 # Download data file
@@ -106,17 +128,7 @@ nfl_types = nfl.dtypes
 #Converting variables in to dummy values
 nfl = pd.get_dummies(nfl)
 
-
-#Clean data
-# weighted mean of all ranks
-# add dummy values
-# feature selection for stadium
-# feature selection for offense stats
-#   make all stats the same scale?
-# feature selection for defense stats
-# feature selection for quarterback stats
-# build models
-
+# --------------------- Feature Selection Methods ---------------------
 
 #### Univariate Selection: ####
 
@@ -147,8 +159,9 @@ univar_df = pd.concat([univar_col, univar_score], axis=1)
 univar_df.columns=['Features','Score']
 
 # For SelectKBest Algorithm the higher the score the higher the feature importance
-univar_df['Score'].sort_values()
-univar_df.nlargest(20, 'Score')
+univar_df['Score'].sort_values(ascending=False)
+univar_df = univar_df.nlargest(50, 'Score')
+
 
 ##### Feature Importance: #####
 #This method provides a score for each feature of your data frame
@@ -159,14 +172,20 @@ y = nfl['H_WinTeam']
 model = ExtraTreesClassifier()
 model.fit(X,y)
 
-print(model.feature_importances_)
-feat_impot_df = pd.Series(model.feature_importances_, index=X.columns)
-feat_impot_df.nlargest(20).plot(kind='barh')
-
+#print(model.feature_importances_)
+feat_impotant = pd.Series(model.feature_importances_, index=X.columns)
+feat_impotant.nlargest(20).plot(kind='barh')
+feat_impot_df = feat_impotant.sort_values(ascending=False).to_frame().reset_index()
+feat_impot_df.columns=['Features','Feat Import']
 
 #### Pearson Correlation Coefficient: ####
+
+# Features with high correlation to the final result
 nfl_corr = nfl.corr()
 top_features=nfl_corr.index
+h_win_corr = nfl_corr['H_WinTeam'].abs().sort_values(ascending=False)
+h_win_coff_df = h_win_corr.to_frame().reset_index()
+h_win_coff_df.columns=['Features','Corr']
 plt.figure(figsize=(20,20))
 sns.heatmap(nfl[top_features].corr(), annot=True)
 
@@ -209,8 +228,115 @@ X = nfl.drop('H_WinTeam', axis=1)
 y = nfl['H_WinTeam']
 
 mutual_info_values = mutual_info_classif(X,y)
-mutual_info_df = pd.Series(mutual_info_values, index=X.columns)
-mutual_info_df.sort_values(ascending=False)
+mutual_info = pd.Series(mutual_info_values, index=X.columns)
+mutual_info.sort_values(ascending=False)
+mutual_info_df = mutual_info.sort_values(ascending=False).to_frame().reset_index()
+mutual_info_df.columns=['Features','Mutual Info']
+
+
+# Comparing feature selection methods to see what columns come up the most often
+# univar_df, feat_impot_df, h_win_coff_df, mutual_info_df
+
+feat_select = pd.concat([univar_df, feat_impot_df, h_win_coff_df, mutual_info_df], axis=1)
+feat1 = feat_select.iloc[:10,0].tolist()
+feat2 = feat_select.iloc[:10,2].tolist()
+feat3 = feat_select.iloc[:10,4].tolist()
+feat4 = feat_select.iloc[:10,6].tolist()
+top_features = feat1+feat2+feat3+feat4
+
+top_feat_unique = []
+for feat in top_features:
+    if feat not in top_feat_unique:
+        top_feat_unique.append(feat)
+
+"""
+#### Apply Standard Scaler on all stats ####
+X = nfl.drop('H_WinTeam', axis=1)
+y = nfl['H_WinTeam']
+
+scaler = StandardScaler()
+scaled = scaler.transform(X)
+X = pd.DataFrame(scaled, columns=X.columns)
+"""
+
+
+
+# --------------------- Machine Learning Methods ---------------------
+# mse - mean squared error -> want the number closer to zero
+
+X = nfl[top_feat_unique]
+y = nfl['H_WinTeam']
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,y, test_size=0.33, random_state=42)
+
+
+#### Linear Regression
+# multiple cv with for loop
+lin_reg = LinearRegression()
+mse = cross_val_score(lin_reg,X,y,scoring='neg_mean_squared_error',cv=7)
+mean_mse = np.mean(mse)
+print(mean_mse)
+
+#predition
+lin_reg.predict('add prediction model')
+
+#### Linear Regression with Train Test Split
+mse_train = cross_val_score(lin_reg,X_train,y_train,scoring='neg_mean_squared_error',cv=7)
+mean_mse_train = np.mean(mse_train)
+print(mean_mse_train)
+
+# prediction
+lin_reg.fit(X_train,y_train)
+y_pred = lin_reg.predict(X_test)
+r2_score1 = r2_score(y_pred,y_test)
+print(r2_score1)
+
+
+# The mse got better with the train test split
+
+#### Ridge Regression and hyper parameter tuning
+# Ridge method tries to reduce the overfitting
+
+ridge = Ridge()
+
+params = {'alpha':[1e-15,1e-10,1e-8,1e-3,1e-2,1,5,10,20,30,35,40,45,50,55,100]}
+
+ridge_regressor=GridSearchCV(ridge,params,scoring='neg_mean_squared_error',cv=7)
+ridge_regressor.fit(X,y)
+print(ridge_regressor.best_params_)
+print(ridge_regressor.best_score_)
+
+# with train test split
+ridge_regressor.fit(X_train,y_train)
+print(ridge_regressor.best_params_)
+print(ridge_regressor.best_score_)
+
+#### Lasso Regression and hyper parameter tuning
+
+lasso = Lasso()
+
+params = {'alpha':[1e-15,1e-10,1e-8,1e-3,1e-2,1,5,10,20,30,35,40,45,50,55,100]}
+
+lasso_regressor=GridSearchCV(lasso,params,scoring='neg_mean_squared_error',cv=7)
+lasso_regressor.fit(X,y)
+print(lasso_regressor.best_params_)
+print(lasso_regressor.best_score_)
+
+# with train test split
+lasso_regressor.fit(X_train,y_train)
+print(lasso_regressor.best_params_)
+print(lasso_regressor.best_score_)
+
+
+#### Logistic Regression
+
+LogisticRegression
+
+# Train Test Split
+log_reg = LogisticRegression()
+
+
 
 
 
