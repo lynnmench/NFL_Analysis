@@ -238,10 +238,10 @@ mutual_info_df.columns=['Features','Mutual Info']
 # univar_df, feat_impot_df, h_win_coff_df, mutual_info_df
 
 feat_select = pd.concat([univar_df, feat_impot_df, h_win_coff_df, mutual_info_df], axis=1)
-feat1 = feat_select.iloc[:10,0].tolist()
-feat2 = feat_select.iloc[:10,2].tolist()
-feat3 = feat_select.iloc[:10,4].tolist()
-feat4 = feat_select.iloc[:10,6].tolist()
+feat1 = feat_select.iloc[:13,0].tolist()
+feat2 = feat_select.iloc[:13,2].tolist()
+feat3 = feat_select.iloc[:13,4].tolist()
+feat4 = feat_select.iloc[:13,6].tolist()
 top_features = feat1+feat2+feat3+feat4
 
 top_feat_unique = []
@@ -264,34 +264,34 @@ X = pd.DataFrame(scaled, columns=X.columns)
 # --------------------- Machine Learning Methods ---------------------
 # mse - mean squared error -> want the number closer to zero
 
+#Use to keep track of model accuracy
+model_acc = {}
+
 X = nfl[top_feat_unique]
 y = nfl['H_WinTeam']
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X,y, test_size=0.33, random_state=42)
+    X,y, test_size=0.29, random_state=42)
 
 
 #### Linear Regression
 # multiple cv with for loop
 lin_reg = LinearRegression()
-mse = cross_val_score(lin_reg,X,y,scoring='neg_mean_squared_error',cv=7)
+mse = cross_val_score(lin_reg,X,y,scoring='neg_mean_squared_error',cv=6)
 mean_mse = np.mean(mse)
 print(mean_mse)
 
-#predition
-lin_reg.predict('add prediction model')
-
 #### Linear Regression with Train Test Split
-mse_train = cross_val_score(lin_reg,X_train,y_train,scoring='neg_mean_squared_error',cv=7)
+mse_train = cross_val_score(lin_reg,X_train,y_train,scoring='neg_mean_squared_error',cv=6)
 mean_mse_train = np.mean(mse_train)
 print(mean_mse_train)
 
 # prediction
 lin_reg.fit(X_train,y_train)
 y_pred = lin_reg.predict(X_test)
-r2_score1 = r2_score(y_pred,y_test)
-print(r2_score1)
-
+lin_reg_score = r2_score(y_test, y_pred)
+print(lin_reg_score)
+model_acc['lin_reg'] = round(lin_reg_score * 100, 2)
 
 # The mse got better with the train test split
 
@@ -302,15 +302,24 @@ ridge = Ridge()
 
 params = {'alpha':[1e-15,1e-10,1e-8,1e-3,1e-2,1,5,10,20,30,35,40,45,50,55,100]}
 
-ridge_regressor=GridSearchCV(ridge,params,scoring='neg_mean_squared_error',cv=7)
+ridge_regressor=GridSearchCV(ridge,params,scoring='neg_mean_squared_error',cv=6)
 ridge_regressor.fit(X,y)
 print(ridge_regressor.best_params_)
 print(ridge_regressor.best_score_)
+y_pred = ridge_regressor.predict(X_test)
+ridge_score = r2_score(y_test, y_pred)
+print(ridge_score)
+model_acc['ridge_par'] = round(ridge_score * 100, 2)
 
 # with train test split
 ridge_regressor.fit(X_train,y_train)
 print(ridge_regressor.best_params_)
 print(ridge_regressor.best_score_)
+
+y_pred = ridge_regressor.predict(X_test)
+ridge_score = r2_score(y_test, y_pred)
+print(ridge_score)
+model_acc['ridge'] = round(ridge_score * 100, 2)
 
 #### Lasso Regression and hyper parameter tuning
 
@@ -318,23 +327,52 @@ lasso = Lasso()
 
 params = {'alpha':[1e-15,1e-10,1e-8,1e-3,1e-2,1,5,10,20,30,35,40,45,50,55,100]}
 
-lasso_regressor=GridSearchCV(lasso,params,scoring='neg_mean_squared_error',cv=7)
-lasso_regressor.fit(X,y)
+lasso_regressor=GridSearchCV(lasso,params,scoring='neg_mean_squared_error',cv=6)
+#lasso_regressor.fit(X,y)
+lasso_regressor.fit(X_train,y_train)
 print(lasso_regressor.best_params_)
 print(lasso_regressor.best_score_)
+y_pred = lasso_regressor.predict(X_test)
+lasso_score = r2_score(y_test, y_pred)
+print(lasso_score)
+model_acc['lasso_par'] = round(lasso_score * 100, 2)
+
 
 # with train test split
 lasso_regressor.fit(X_train,y_train)
 print(lasso_regressor.best_params_)
 print(lasso_regressor.best_score_)
 
+y_pred = ridge_regressor.predict(X_test)
+lasso_score = r2_score(y_test, y_pred)
+print(lasso_score)
+model_acc['lasso'] = round(lasso_score * 100, 2)
+
+#### Models that are more commonly used with classification problems: ####
+#### Logistic Regression, Random Foest, 
+#### Gaussian Naive Bayes, Gradient Boosting Classifier
+
 
 #### Logistic Regression
 
-LogisticRegression
-
-# Train Test Split
 log_reg = LogisticRegression()
+log_reg.fit(X_train,y_train)
+
+mse = cross_val_score(lin_reg,X,y,scoring='neg_mean_squared_error',cv=6)
+mean_mse = np.mean(mse)
+print(mean_mse)
+
+#### Logistic Regression with Train Test Split
+mse_train = cross_val_score(log_reg,X_train,y_train,scoring='neg_mean_squared_error',cv=6)
+mean_mse_train = np.mean(mse_train)
+print(mean_mse_train)
+
+# prediction
+log_reg.fit(X_train,y_train)
+y_pred = log_reg.predict(X_test)
+log_reg_score = r2_score(y_test, y_pred)
+print(log_reg_score)
+model_acc['log_reg'] = round(log_reg_score * 100, 2)
 
 
 
